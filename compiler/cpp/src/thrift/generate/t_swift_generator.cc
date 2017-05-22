@@ -903,7 +903,7 @@ void t_swift_generator::generate_swift_struct_implementation(ofstream& out,
 
   generate_swift_struct_equatable_extension(out, tstruct, is_private);
 
-  if (!is_private && !is_result && (gen_cocoa_ || debug_descriptions_)) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
+  if (!is_private && !is_result && (gen_cocoa_)) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
     generate_swift_struct_printable_extension(out, tstruct);
   }
 
