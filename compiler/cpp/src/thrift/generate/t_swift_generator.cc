@@ -1429,7 +1429,7 @@ void t_swift_generator::generate_swift_struct_printable_extension(ofstream& out,
       out << "(\"" << endl;
       for (f_iter = fields.begin(); f_iter != fields.end();) {
         indent(out) << "desc += \"" << (*f_iter)->get_name()
-                    << "=\\(self." << maybe_escape_identifier((*f_iter)->get_name()) << ")";
+                    << "=\\(String(describing: self." << maybe_escape_identifier((*f_iter)->get_name()) << "))";
         if (++f_iter != fields.end()) {
           out << ", ";
         }
