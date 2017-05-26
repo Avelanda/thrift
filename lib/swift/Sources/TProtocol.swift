@@ -18,7 +18,6 @@
 */
 
 import Foundation
-//
 
 public enum TMessageType: Int32 {
   case call = 1

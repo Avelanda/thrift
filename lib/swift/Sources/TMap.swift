@@ -18,13 +18,12 @@
  */
 
 public struct TMap<Key : TSerializable & Hashable, Value : TSerializable>: Collection, ExpressibleByDictionaryLiteral, Hashable, TSerializable {
-  typealias Storage = Dictionary<Key, Value>
-  public typealias Element = Storage.Element
-  public typealias Index = Storage.Index
-  public typealias IndexDistance = Storage.IndexDistance
-  public typealias Indices = Storage.Indices
-  public typealias SubSequence = Storage.SubSequence
-  internal var storage = Storage()
+  public typealias Element = Dictionary<Key, Value>.Element
+  public typealias Index = Dictionary<Key, Value>.Index
+  public typealias IndexDistance = Dictionary<Key, Value>.IndexDistance
+  public typealias Indices = Dictionary<Key, Value>.Indices
+  public typealias SubSequence = Dictionary<Key, Value>.SubSequence
+  internal var storage = Dictionary<Key, Value>()
   
   /// Mark: Be Like Dictionary
   
@@ -45,7 +44,7 @@ public struct TMap<Key : TSerializable & Hashable, Value : TSerializable>: Colle
   }
   
   public init(minimumCapacity: Int) {
-    storage = Storage(minimumCapacity: minimumCapacity)
+    storage = Dictionary<Key, Value>(minimumCapacity: minimumCapacity)
   }
   
   /// init from Dictionary<K,V>
@@ -108,7 +107,7 @@ public struct TMap<Key : TSerializable & Hashable, Value : TSerializable>: Colle
   /// Mark: DictionaryLiteralConvertible
   
   public init(dictionaryLiteral elements: (Key, Value)...) {
-    storage = Storage()
+    storage = Dictionary<Key, Value>()
     for (key, value) in elements {
       storage[key] = value
     }
@@ -130,7 +129,7 @@ public struct TMap<Key : TSerializable & Hashable, Value : TSerializable>: Colle
   
   public static var thriftType : TType { return .map }
   public init() {
-    storage = Storage()
+    storage = Dictionary<Key, Value>()
   }
    
   public static func read(from proto: TProtocol) throws -> TMap {

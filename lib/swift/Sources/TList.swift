@@ -18,16 +18,15 @@
  */
 
 public struct TList<Element : TSerializable> : RandomAccessCollection, MutableCollection, ExpressibleByArrayLiteral, TSerializable, Hashable {
-  typealias Storage = Array<Element>
-  public typealias Indices = Storage.Indices
+  public typealias Indices = Array<Element>.Indices
 
-  internal var storage = Storage()
+  internal var storage = Array<Element>()
   public init() { }
   public init(arrayLiteral elements: Element...) {
-    self.storage = Storage(elements)
+    self.storage = Array<Element>(elements)
   }
   public init<Source : Sequence>(_ sequence: Source) where Source.Iterator.Element == Element {
-    storage = Storage(sequence)
+    storage = Array<Element>(sequence)
   }
 
   /// Mark: Hashable
@@ -68,10 +67,10 @@ public struct TList<Element : TSerializable> : RandomAccessCollection, MutableCo
 
   /// Mark: MutableCollection
   
-  public typealias SubSequence = Storage.SubSequence
-  public typealias Index = Storage.Index
+  public typealias SubSequence = Array<Element>.SubSequence
+  public typealias Index = Array<Element>.Index
   
-  public subscript(position: Storage.Index) -> Element {
+  public subscript(position: Array<Element>.Index) -> Element {
     get {
       return storage[position]
     }

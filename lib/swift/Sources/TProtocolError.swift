@@ -97,9 +97,9 @@ public struct TProtocolError : TError {
   public static var defaultCase: Code { return .unknown }
 
   public var description: String {
-    var out = "\(TProtocolError.self):  (\(error.thriftErrorCode) \(error.description)\n"
+    var out = "\(TProtocolError.self):  (\(error.thriftErrorCode) \(error.description))\n"
     if let extendedError = extendedError {
-      out += "TProtocolExtendedError (\(extendedError.thriftErrorCode)): \(extendedError.description)"
+      out += "TProtocolExtendedError (\(extendedError.thriftErrorCode)): \(extendedError.description))"
     }
     if let message = message {
       out += "Message: \(message)"

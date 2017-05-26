@@ -47,7 +47,7 @@ public struct TTransportError: TError {
       case .endOfFile:    return "End Of File"
       case .negativeSize: return "Negative Size"
       case .sizeLimit(let limit, let got):
-        return "Message exceeds size limit of \(limit) (received: \(got)"
+        return "Message exceeds size limit of \(limit) (received: \(got))"
       }
     }
   }
