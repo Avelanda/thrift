@@ -926,7 +926,7 @@ void t_swift_generator::generate_swift_struct_implementation(ofstream& out,
 
   generate_swift_struct_equatable_extension(out, tstruct, is_private);
 
-  if (!is_private && !is_result && (gen_cocoa_ || debug_descriptions_)) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
+  if (!is_private && !is_result && !gen_cocoa_) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
     generate_swift_struct_printable_extension(out, tstruct);
   }
 
@@ -1452,7 +1452,7 @@ void t_swift_generator::generate_swift_struct_printable_extension(ofstream& out,
       out << "(\"" << endl;
       for (f_iter = fields.begin(); f_iter != fields.end();) {
         indent(out) << "desc += \"" << (*f_iter)->get_name()
-                    << "=\\(self." << maybe_escape_identifier((*f_iter)->get_name()) << ")";
+                    << "=\\(String(describing: self." << maybe_escape_identifier((*f_iter)->get_name()) << "))";
         if (++f_iter != fields.end()) {
           out << ", ";
         }
