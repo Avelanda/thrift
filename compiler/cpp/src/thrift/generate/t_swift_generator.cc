@@ -58,6 +58,7 @@ public:
     async_clients_ = false;
     debug_descriptions_ = false;
     no_strict_ = false;
+    namespaced_ = false;
     gen_cocoa_ = false;
     promise_kit_ = false;
 
@@ -71,8 +72,8 @@ public:
         no_strict_ = true;
       } else if( iter->first.compare("debug_descriptions") == 0) {
         debug_descriptions_ = true;
-      } else if( iter->first.compare("debug_descriptions") == 0) {
-        debug_descriptions_ = true;
+      } else if( iter->first.compare("namespaced") == 0) {
+        namespaced_ = true;
       } else if( iter->first.compare("cocoa") == 0) {
         gen_cocoa_ = true;
       } else if( iter->first.compare("promise_kit") == 0) {
@@ -216,6 +217,13 @@ public:
   void generate_old_swift_service_client_async_implementation(ofstream& out,
                                                               t_service* tservice);
 
+  static std::string get_real_swift_module(const t_program* program) {
+    std::string real_module = program->get_namespace("swift");
+    if (real_module.empty()) {
+      return program->get_name();
+    }
+    return real_module;
+  }
 private:
 
   void block_open(ostream& out) {
@@ -276,6 +284,7 @@ private:
 
   bool debug_descriptions_;
   bool no_strict_;
+  bool namespaced_;
   set<string> swift_reserved_words_;
 
   /** Swift 2/Cocoa compatibility */
@@ -290,13 +299,21 @@ private:
  */
 void t_swift_generator::init_generator() {
   // Make output directory
-  MKDIR(get_out_dir().c_str());
+  string module = get_real_swift_module(program_);
+  string out_dir = get_out_dir();
+  string module_path = out_dir;
+  string name = capitalize(program_name_);
+  if (namespaced_ and !module.empty()) {
+    module_path = module_path + "/" + module;
+    name = capitalize(module);
+  }
+  MKDIR(module_path.c_str());
 
   populate_reserved_words();
 
   // we have a .swift declarations file...
-  string f_decl_name = capitalize(program_name_) + ".swift";
-  string f_decl_fullname = get_out_dir() + f_decl_name;
+  string f_decl_name = name + ".swift";
+  string f_decl_fullname = module_path + "/" + f_decl_name;
   f_decl_.open(f_decl_fullname.c_str());
 
   f_decl_ << autogen_comment() << endl;
@@ -304,8 +321,8 @@ void t_swift_generator::init_generator() {
   f_decl_ << swift_imports() << swift_thrift_imports() << endl;
 
   // ...and a .swift implementation extensions file
-  string f_impl_name = capitalize(program_name_) + "+Exts.swift";
-  string f_impl_fullname = get_out_dir() + f_impl_name;
+  string f_impl_name = name + "+Exts.swift";
+  string f_impl_fullname = module_path + "/" + f_impl_name;
   f_impl_.open(f_impl_fullname.c_str());
 
   f_impl_ << autogen_comment() << endl;
@@ -331,6 +348,12 @@ string t_swift_generator::swift_imports() {
     includes << "import " << *i_iter << endl;
   }
 
+  if (namespaced_) {
+    const vector<t_program*>& program_includes = program_->get_includes();
+    for (size_t i = 0; i < program_includes.size(); ++i) {
+      includes << ("import " + get_real_swift_module(program_includes[i])) << endl;
+    }
+  }
   includes << endl;
 
   return includes.str();
@@ -578,7 +601,7 @@ void t_swift_generator::generate_docstring(ofstream& out, string& doc) {
 void t_swift_generator::generate_swift_struct(ofstream& out,
                                               t_struct* tstruct,
                                               bool is_private) {
- 
+
   if (gen_cocoa_) {
     generate_old_swift_struct(out, tstruct, is_private);
     return;
@@ -2599,21 +2622,26 @@ void t_swift_generator::generate_swift_service_server_implementation(ofstream& o
  * @return Swift type name, i.e. Dictionary<Key,Value>
  */
 string t_swift_generator::type_name(t_type* ttype, bool is_optional, bool is_forced) {
-  string result;
+  string result = "";
+
   if (ttype->is_base_type()) {
-    result = base_type_name((t_base_type*)ttype);
+    result += base_type_name((t_base_type*)ttype);
   } else if (ttype->is_map()) {
     t_map *map = (t_map *)ttype;
-    result = "TMap<" + type_name(map->get_key_type()) + ", " + type_name(map->get_val_type()) + ">";
+    result += "TMap<" + type_name(map->get_key_type()) + ", " + type_name(map->get_val_type()) + ">";
   } else if (ttype->is_set()) {
     t_set *set = (t_set *)ttype;
-    result = "TSet<" + type_name(set->get_elem_type()) + ">";
+    result += "TSet<" + type_name(set->get_elem_type()) + ">";
   } else if (ttype->is_list()) {
     t_list *list = (t_list *)ttype;
-    result = "TList<" + type_name(list->get_elem_type()) + ">";
+    result += "TList<" + type_name(list->get_elem_type()) + ">";
   }
   else {
-    result = ttype->get_name();
+    t_program* program = ttype->get_program();
+    if (namespaced_ && program != program_) {
+      result += get_real_swift_module(program) + ".";
+    }
+    result += ttype->get_name();
   }
 
   if (is_optional) {
@@ -3258,5 +3286,6 @@ THRIFT_REGISTER_GENERATOR(
     "    debug_descriptions:\n"
     "                     Allow use of debugDescription so the app can add description via a cateogory/extension\n"
     "    async_clients:   Generate clients which invoke asynchronously via block syntax.\n"
+    "    namespaced:      Generate source in Module scoped output directories for Swift Namespacing.\n"
     "    cocoa:           Generate Swift 2.x code compatible with the Thrift/Cocoa library\n"
     "    promise_kit:     Generate clients which invoke asynchronously via promises (only use with cocoa flag)\n")
