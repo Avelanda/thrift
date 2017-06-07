@@ -61,7 +61,7 @@ public:
     namespaced_ = false;
     gen_cocoa_ = false;
     promise_kit_ = false;
-
+    safe_enums_ = false;
 
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
       if( iter->first.compare("log_unexpected") == 0) {
@@ -76,6 +76,8 @@ public:
         namespaced_ = true;
       } else if( iter->first.compare("cocoa") == 0) {
         gen_cocoa_ = true;
+      } else if( iter->first.compare("safe_enums") == 0) {
+        safe_enums_ = true;
       } else if( iter->first.compare("promise_kit") == 0) {
         if (gen_cocoa_ == false) {
           throw "PromiseKit only available with Swift 2.x, use `cocoa` option" + iter->first;
@@ -285,6 +287,7 @@ private:
   bool debug_descriptions_;
   bool no_strict_;
   bool namespaced_;
+  bool safe_enums_;
   set<string> swift_reserved_words_;
 
   /** Swift 2/Cocoa compatibility */
@@ -419,23 +422,84 @@ void t_swift_generator::generate_enum(t_enum* tenum) {
     generate_old_enum(tenum);
     return;
   }
-  f_decl_ << indent() << "public enum " << tenum->get_name() << " : Int32, TEnum";
+  f_decl_ << indent() << "public enum " << tenum->get_name() << " : TEnum";
   block_open(f_decl_);
 
   vector<t_enum_value*> constants = tenum->get_constants();
   vector<t_enum_value*>::iterator c_iter;
 
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
-    f_decl_ << indent() << "case " << enum_case_name((*c_iter), true)
-            << " = " << (*c_iter)->get_value() << endl;
+    f_decl_ << indent() << "case " << enum_case_name((*c_iter), true) << endl;
   }
 
+  // unknown associated value case for safety and similar behavior to other languages
+  if (safe_enums_) {
+    f_decl_ << indent() << "case unknown(Int32)" << endl;
+  }
+  f_decl_ << endl;
+
+  // TSerializable read(from:)
+  f_decl_ << indent() << "public static func read(from proto: TProtocol) throws -> "
+          << tenum->get_name();
+  block_open(f_decl_);
+  f_decl_ << indent() << "let raw: Int32 = try proto.read()" << endl;
+  f_decl_ << indent() << "let new = " << tenum->get_name() << "(rawValue: raw)" << endl;
+
+  f_decl_ << indent() << "if let unwrapped = new {" << endl;
+  indent_up();
+  f_decl_ << indent() << "return unwrapped" << endl;
+  indent_down();
+  f_decl_ << indent() << "} else {" << endl;
+  indent_up();
+  f_decl_ << indent() << "throw TProtocolError(error: .invalidData," << endl;
+  f_decl_ << indent() << "                     message: \"Invalid enum value (\\(raw)) for \\("
+          << tenum->get_name() << ".self)\")" << endl;
+  indent_down();
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+
+  // empty init for TSerializable
   f_decl_ << endl;
   f_decl_ << indent() << "public init()";
   block_open(f_decl_);
 
   f_decl_ << indent() << "self = ." << enum_case_name(constants.front(), false) << endl;
   block_close(f_decl_);
+  f_decl_ << endl;
+
+  // rawValue getter
+  f_decl_ << indent() << "var rawValue: Int32";
+  block_open(f_decl_);
+  f_decl_ << indent() << "switch self {" << endl;
+  for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
+    f_decl_ << indent() << "case ." << enum_case_name((*c_iter), true)
+            << ": return " << (*c_iter)->get_value() << endl;
+  }
+  if (safe_enums_) {
+    f_decl_ << indent() << "case .unknown(let value): return value" << endl;
+  }
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+  f_decl_ << endl;
+
+  // convenience rawValue initalizer
+  f_decl_ << indent() << "public init?(rawValue: Int32)";
+  block_open(f_decl_);
+  f_decl_ << indent() << "switch rawValue {" << endl;;
+  for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
+    f_decl_ << indent() << "case " << (*c_iter)->get_value()
+            << ": self = ." << enum_case_name((*c_iter), true) << endl;
+  }
+  if (!safe_enums_) {
+    f_decl_ << indent() << "default: return None" << endl;
+  } else {
+    f_decl_ << indent() << "default: self = .unknown(rawValue)" << endl;
+  }
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+
+
+
 
   block_close(f_decl_);
   f_decl_ << endl;
@@ -3288,4 +3352,5 @@ THRIFT_REGISTER_GENERATOR(
     "    async_clients:   Generate clients which invoke asynchronously via block syntax.\n"
     "    namespaced:      Generate source in Module scoped output directories for Swift Namespacing.\n"
     "    cocoa:           Generate Swift 2.x code compatible with the Thrift/Cocoa library\n"
-    "    promise_kit:     Generate clients which invoke asynchronously via promises (only use with cocoa flag)\n")
+    "    promise_kit:     Generate clients which invoke asynchronously via promises (only use with cocoa flag)\n"
+    "    safe_enums:      Generate enum types with an unknown case to handle unspecified values rather than throw a serialization error\n")
