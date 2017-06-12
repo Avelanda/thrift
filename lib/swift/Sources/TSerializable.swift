@@ -43,7 +43,7 @@ extension TSerializable {
   public var thriftType: TType { return Self.thriftType }
 }
 
-public func ==(lhs: T, rhs: T) -> Bool where T : TSerializable {
+public func ==<T>(lhs: T, rhs: T) -> Bool where T : TSerializable {
   return lhs.hashValue == rhs.hashValue
 }
 
