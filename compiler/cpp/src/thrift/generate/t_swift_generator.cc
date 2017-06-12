@@ -468,7 +468,7 @@ void t_swift_generator::generate_enum(t_enum* tenum) {
   f_decl_ << endl;
 
   // rawValue getter
-  f_decl_ << indent() << "var rawValue: Int32";
+  f_decl_ << indent() << "public var rawValue: Int32";
   block_open(f_decl_);
   f_decl_ << indent() << "switch self {" << endl;
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
