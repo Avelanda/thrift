@@ -491,7 +491,7 @@ void t_swift_generator::generate_enum(t_enum* tenum) {
             << ": self = ." << enum_case_name((*c_iter), true) << endl;
   }
   if (!safe_enums_) {
-    f_decl_ << indent() << "default: return None" << endl;
+    f_decl_ << indent() << "default: return nil" << endl;
   } else {
     f_decl_ << indent() << "default: self = .unknown(rawValue)" << endl;
   }
