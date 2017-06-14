@@ -20,20 +20,16 @@
 import Foundation
 
 public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, Collection, ExpressibleByArrayLiteral, TSerializable {
-  /// Typealias for Storage type
-  typealias Storage = Set<Element>
-  
-  
-  /// Internal Storage used for TSet (Set\<Element\>)
-  internal var storage : Storage
+  /// Internal Set<Element> used for TSet (Set\<Element\>)
+  internal var storage : Set<Element>
   
   
   /// Mark: Collection
   
-  public typealias Indices = Storage.Indices
-  public typealias Index = Storage.Index
-  public typealias IndexDistance = Storage.IndexDistance
-  public typealias SubSequence = Storage.SubSequence
+  public typealias Indices = Set<Element>.Indices
+  public typealias Index = Set<Element>.Index
+  public typealias IndexDistance = Set<Element>.IndexDistance
+  public typealias SubSequence = Set<Element>.SubSequence
   
   
   public var indices: Indices { return storage.indices }
@@ -53,7 +49,7 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
     return storage.index(i, offsetBy: n, limitedBy: limit)
   }
   
-  public subscript (position: Storage.Index) -> Element? {
+  public subscript (position: Set<Element>.Index) -> Element? {
     return storage[position]
   }
   
@@ -110,7 +106,7 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
     return storage.index(after: i)
   }
 
-  public func formIndex(after i: inout Storage.Index) {
+  public func formIndex(after i: inout Set<Element>.Index) {
     storage.formIndex(after: &i)
   }
   
@@ -133,15 +129,15 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
   public static var thriftType : TType { return .set }
   
   public init() {
-    storage = Storage()
+    storage = Set<Element>()
   }
   
   public init(arrayLiteral elements: Element...) {
-    self.storage = Storage(elements)
+    self.storage = Set<Element>(elements)
   }
   
   public init<Source : Sequence>(_ sequence: Source) where Source.Iterator.Element == Element {
-    storage = Storage(sequence)
+    storage = Set<Element>(sequence)
   }
   
   public static func read(from proto: TProtocol) throws -> TSet {
