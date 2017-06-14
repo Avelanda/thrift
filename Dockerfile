@@ -58,4 +58,4 @@ RUN buildDeps=" \
     && rm -rf /tmp/* \
     && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["thrift"]
+CMD ["/bin/bash"]
