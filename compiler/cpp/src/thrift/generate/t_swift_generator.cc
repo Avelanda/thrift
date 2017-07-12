@@ -58,9 +58,10 @@ public:
     async_clients_ = false;
     debug_descriptions_ = false;
     no_strict_ = false;
+    namespaced_ = false;
     gen_cocoa_ = false;
     promise_kit_ = false;
-
+    safe_enums_ = false;
 
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
       if( iter->first.compare("log_unexpected") == 0) {
@@ -71,10 +72,12 @@ public:
         no_strict_ = true;
       } else if( iter->first.compare("debug_descriptions") == 0) {
         debug_descriptions_ = true;
-      } else if( iter->first.compare("debug_descriptions") == 0) {
-        debug_descriptions_ = true;
+      } else if( iter->first.compare("namespaced") == 0) {
+        namespaced_ = true;
       } else if( iter->first.compare("cocoa") == 0) {
         gen_cocoa_ = true;
+      } else if( iter->first.compare("safe_enums") == 0) {
+        safe_enums_ = true;
       } else if( iter->first.compare("promise_kit") == 0) {
         if (gen_cocoa_ == false) {
           throw "PromiseKit only available with Swift 2.x, use `cocoa` option" + iter->first;
@@ -216,6 +219,13 @@ public:
   void generate_old_swift_service_client_async_implementation(ofstream& out,
                                                               t_service* tservice);
 
+  static std::string get_real_swift_module(const t_program* program) {
+    std::string real_module = program->get_namespace("swift");
+    if (real_module.empty()) {
+      return program->get_name();
+    }
+    return real_module;
+  }
 private:
 
   void block_open(ostream& out) {
@@ -276,6 +286,8 @@ private:
 
   bool debug_descriptions_;
   bool no_strict_;
+  bool namespaced_;
+  bool safe_enums_;
   set<string> swift_reserved_words_;
 
   /** Swift 2/Cocoa compatibility */
@@ -290,13 +302,21 @@ private:
  */
 void t_swift_generator::init_generator() {
   // Make output directory
-  MKDIR(get_out_dir().c_str());
+  string module = get_real_swift_module(program_);
+  string out_dir = get_out_dir();
+  string module_path = out_dir;
+  string name = capitalize(program_name_);
+  if (namespaced_ and !module.empty()) {
+    module_path = module_path + "/" + module;
+    name = capitalize(module);
+  }
+  MKDIR(module_path.c_str());
 
   populate_reserved_words();
 
   // we have a .swift declarations file...
-  string f_decl_name = capitalize(program_name_) + ".swift";
-  string f_decl_fullname = get_out_dir() + f_decl_name;
+  string f_decl_name = name + ".swift";
+  string f_decl_fullname = module_path + "/" + f_decl_name;
   f_decl_.open(f_decl_fullname.c_str());
 
   f_decl_ << autogen_comment() << endl;
@@ -304,8 +324,8 @@ void t_swift_generator::init_generator() {
   f_decl_ << swift_imports() << swift_thrift_imports() << endl;
 
   // ...and a .swift implementation extensions file
-  string f_impl_name = capitalize(program_name_) + "+Exts.swift";
-  string f_impl_fullname = get_out_dir() + f_impl_name;
+  string f_impl_name = name + "+Exts.swift";
+  string f_impl_fullname = module_path + "/" + f_impl_name;
   f_impl_.open(f_impl_fullname.c_str());
 
   f_impl_ << autogen_comment() << endl;
@@ -331,6 +351,12 @@ string t_swift_generator::swift_imports() {
     includes << "import " << *i_iter << endl;
   }
 
+  if (namespaced_) {
+    const vector<t_program*>& program_includes = program_->get_includes();
+    for (size_t i = 0; i < program_includes.size(); ++i) {
+      includes << ("import " + get_real_swift_module(program_includes[i])) << endl;
+    }
+  }
   includes << endl;
 
   return includes.str();
@@ -396,23 +422,84 @@ void t_swift_generator::generate_enum(t_enum* tenum) {
     generate_old_enum(tenum);
     return;
   }
-  f_decl_ << indent() << "public enum " << tenum->get_name() << " : Int32, TEnum";
+  f_decl_ << indent() << "public enum " << tenum->get_name() << " : TEnum";
   block_open(f_decl_);
 
   vector<t_enum_value*> constants = tenum->get_constants();
   vector<t_enum_value*>::iterator c_iter;
 
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
-    f_decl_ << indent() << "case " << enum_case_name((*c_iter), true)
-            << " = " << (*c_iter)->get_value() << endl;
+    f_decl_ << indent() << "case " << enum_case_name((*c_iter), true) << endl;
   }
 
+  // unknown associated value case for safety and similar behavior to other languages
+  if (safe_enums_) {
+    f_decl_ << indent() << "case unknown(Int32)" << endl;
+  }
+  f_decl_ << endl;
+
+  // TSerializable read(from:)
+  f_decl_ << indent() << "public static func read(from proto: TProtocol) throws -> "
+          << tenum->get_name();
+  block_open(f_decl_);
+  f_decl_ << indent() << "let raw: Int32 = try proto.read()" << endl;
+  f_decl_ << indent() << "let new = " << tenum->get_name() << "(rawValue: raw)" << endl;
+
+  f_decl_ << indent() << "if let unwrapped = new {" << endl;
+  indent_up();
+  f_decl_ << indent() << "return unwrapped" << endl;
+  indent_down();
+  f_decl_ << indent() << "} else {" << endl;
+  indent_up();
+  f_decl_ << indent() << "throw TProtocolError(error: .invalidData," << endl;
+  f_decl_ << indent() << "                     message: \"Invalid enum value (\\(raw)) for \\("
+          << tenum->get_name() << ".self)\")" << endl;
+  indent_down();
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+
+  // empty init for TSerializable
   f_decl_ << endl;
   f_decl_ << indent() << "public init()";
   block_open(f_decl_);
 
   f_decl_ << indent() << "self = ." << enum_case_name(constants.front(), false) << endl;
   block_close(f_decl_);
+  f_decl_ << endl;
+
+  // rawValue getter
+  f_decl_ << indent() << "public var rawValue: Int32";
+  block_open(f_decl_);
+  f_decl_ << indent() << "switch self {" << endl;
+  for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
+    f_decl_ << indent() << "case ." << enum_case_name((*c_iter), true)
+            << ": return " << (*c_iter)->get_value() << endl;
+  }
+  if (safe_enums_) {
+    f_decl_ << indent() << "case .unknown(let value): return value" << endl;
+  }
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+  f_decl_ << endl;
+
+  // convenience rawValue initalizer
+  f_decl_ << indent() << "public init?(rawValue: Int32)";
+  block_open(f_decl_);
+  f_decl_ << indent() << "switch rawValue {" << endl;;
+  for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
+    f_decl_ << indent() << "case " << (*c_iter)->get_value()
+            << ": self = ." << enum_case_name((*c_iter), true) << endl;
+  }
+  if (!safe_enums_) {
+    f_decl_ << indent() << "default: return nil" << endl;
+  } else {
+    f_decl_ << indent() << "default: self = .unknown(rawValue)" << endl;
+  }
+  f_decl_ << indent() << "}" << endl;
+  block_close(f_decl_);
+
+
+
 
   block_close(f_decl_);
   f_decl_ << endl;
@@ -578,7 +665,7 @@ void t_swift_generator::generate_docstring(ofstream& out, string& doc) {
 void t_swift_generator::generate_swift_struct(ofstream& out,
                                               t_struct* tstruct,
                                               bool is_private) {
- 
+
   if (gen_cocoa_) {
     generate_old_swift_struct(out, tstruct, is_private);
     return;
@@ -903,7 +990,7 @@ void t_swift_generator::generate_swift_struct_implementation(ofstream& out,
 
   generate_swift_struct_equatable_extension(out, tstruct, is_private);
 
-  if (!is_private && !is_result && (gen_cocoa_ || debug_descriptions_)) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
+  if (!is_private && !is_result && !gen_cocoa_) {  // old compiler didn't use debug_descriptions, OR it with gen_cocoa_ so the flag doesn't matter w/ cocoa
     generate_swift_struct_printable_extension(out, tstruct);
   }
 
@@ -1429,7 +1516,7 @@ void t_swift_generator::generate_swift_struct_printable_extension(ofstream& out,
       out << "(\"" << endl;
       for (f_iter = fields.begin(); f_iter != fields.end();) {
         indent(out) << "desc += \"" << (*f_iter)->get_name()
-                    << "=\\(self." << maybe_escape_identifier((*f_iter)->get_name()) << ")";
+                    << "=\\(String(describing: self." << maybe_escape_identifier((*f_iter)->get_name()) << "))";
         if (++f_iter != fields.end()) {
           out << ", ";
         }
@@ -2599,21 +2686,26 @@ void t_swift_generator::generate_swift_service_server_implementation(ofstream& o
  * @return Swift type name, i.e. Dictionary<Key,Value>
  */
 string t_swift_generator::type_name(t_type* ttype, bool is_optional, bool is_forced) {
-  string result;
+  string result = "";
+
   if (ttype->is_base_type()) {
-    result = base_type_name((t_base_type*)ttype);
+    result += base_type_name((t_base_type*)ttype);
   } else if (ttype->is_map()) {
     t_map *map = (t_map *)ttype;
-    result = "TMap<" + type_name(map->get_key_type()) + ", " + type_name(map->get_val_type()) + ">";
+    result += "TMap<" + type_name(map->get_key_type()) + ", " + type_name(map->get_val_type()) + ">";
   } else if (ttype->is_set()) {
     t_set *set = (t_set *)ttype;
-    result = "TSet<" + type_name(set->get_elem_type()) + ">";
+    result += "TSet<" + type_name(set->get_elem_type()) + ">";
   } else if (ttype->is_list()) {
     t_list *list = (t_list *)ttype;
-    result = "TList<" + type_name(list->get_elem_type()) + ">";
+    result += "TList<" + type_name(list->get_elem_type()) + ">";
   }
   else {
-    result = ttype->get_name();
+    t_program* program = ttype->get_program();
+    if (namespaced_ && program != program_) {
+      result += get_real_swift_module(program) + ".";
+    }
+    result += ttype->get_name();
   }
 
   if (is_optional) {
@@ -3258,5 +3350,7 @@ THRIFT_REGISTER_GENERATOR(
     "    debug_descriptions:\n"
     "                     Allow use of debugDescription so the app can add description via a cateogory/extension\n"
     "    async_clients:   Generate clients which invoke asynchronously via block syntax.\n"
+    "    namespaced:      Generate source in Module scoped output directories for Swift Namespacing.\n"
     "    cocoa:           Generate Swift 2.x code compatible with the Thrift/Cocoa library\n"
-    "    promise_kit:     Generate clients which invoke asynchronously via promises (only use with cocoa flag)\n")
+    "    promise_kit:     Generate clients which invoke asynchronously via promises (only use with cocoa flag)\n"
+    "    safe_enums:      Generate enum types with an unknown case to handle unspecified values rather than throw a serialization error\n")
