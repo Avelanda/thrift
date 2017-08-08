@@ -1131,6 +1131,9 @@ void t_swift_generator::generate_swift_union_reader(ofstream& out, t_struct* tst
 
   block_close(out);
   out << endl;
+
+  indent(out) << "try proto.readStructEnd()" << endl;
+
   indent(out) << "if let ret = ret";
   block_open(out);
   indent(out) << "return ret" << endl;
