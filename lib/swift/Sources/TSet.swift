@@ -66,7 +66,7 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
     return storage.insert(newMember)
   }
   
-  public mutating func remove(_ member: Element) -> Element? {
+  public mutating func remove(_ member: Element) -> Element {
     return storage.remove(member)
   }
   
