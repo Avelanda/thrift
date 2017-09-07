@@ -49,9 +49,15 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
     return storage.index(i, offsetBy: n, limitedBy: limit)
   }
   
+  #if swift(>=3.2)
+  public subscript (position: Set<Element>.Index) -> Element {
+    return storage[position]
+  }
+  #else
   public subscript (position: Set<Element>.Index) -> Element? {
     return storage[position]
   }
+  #endif
   
   /// Mark: SetAlgebra
   internal init(storage: Set<Element>) {
@@ -66,7 +72,7 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
     return storage.insert(newMember)
   }
   
-  public mutating func remove(_ member: Element) -> Element {
+  public mutating func remove(_ member: Element) -> Element? {
     return storage.remove(member)
   }
   
