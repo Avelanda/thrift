@@ -62,7 +62,7 @@ import CoreFoundation
         }
         
         if bytesRead <= 0 {
-          throw TTransportError(error: .notOpen)
+          throw TTransportError(error: .notOpen, message: input.streamError?.localizedDescription)
         }
         read.append(Data(bytes: buffer))
       }
@@ -102,7 +102,7 @@ import CoreFoundation
         }
         
         if bytesWritten == -1 {
-          throw TTransportError(error: .notOpen)
+          throw TTransportError(error: .notOpen, message: output.streamError?.localizedDescription)
         } else if bytesWritten == 0 {
           throw TTransportError(error: .endOfFile)
         }
