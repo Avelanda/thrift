@@ -83,8 +83,8 @@ public class TCFSocketTransport: TStreamTransport {
         CFWriteStreamSetProperty(writeStream, .shouldCloseNativeSocket, kCFBooleanTrue)
       
         if secure {
-            CFReadStreamSetProperty(readStream, .socketSecurityLevel, StreamSocketSecurityLevel.negotiatedSSL._rawValue)
-            CFWriteStreamSetProperty(writeStream, .socketSecurityLevel, StreamSocketSecurityLevel.negotiatedSSL._rawValue)
+            CFReadStreamSetProperty(readStream, .socketSecurityLevel, StreamSocketSecurityLevel.negotiatedSSL.rawValue as CFTypeRef)
+            CFWriteStreamSetProperty(writeStream, .socketSecurityLevel, StreamSocketSecurityLevel.negotiatedSSL.rawValue as CFTypeRef)
         }
 
       inputStream = readStream as InputStream
