@@ -20,7 +20,7 @@
 public struct TMap<Key : TSerializable & Hashable, Value : TSerializable>: Collection, ExpressibleByDictionaryLiteral, Hashable, TSerializable {
   public typealias Element = Dictionary<Key, Value>.Element
   public typealias Index = Dictionary<Key, Value>.Index
-  public typealias IndexDistance = Dictionary<Key, Value>.IndexDistance
+  public typealias IndexDistance = Int
   public typealias Indices = Dictionary<Key, Value>.Indices
   public typealias SubSequence = Dictionary<Key, Value>.SubSequence
   internal var storage = Dictionary<Key, Value>()

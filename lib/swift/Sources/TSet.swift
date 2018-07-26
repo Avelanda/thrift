@@ -28,7 +28,7 @@ public struct TSet<Element : TSerializable & Hashable> : SetAlgebra, Hashable, C
   
   public typealias Indices = Set<Element>.Indices
   public typealias Index = Set<Element>.Index
-  public typealias IndexDistance = Set<Element>.IndexDistance
+  public typealias IndexDistance = Int
   public typealias SubSequence = Set<Element>.SubSequence
   
   
