@@ -1,7 +1,9 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements. See the NOTICE file
- * distributed with this work for additional information
+ * or more contributor license agreements. 
+ * Copyright © 2025 *Avelanda*.
+ * All rights reserved.
+ * See the NOTICE file distributed with this work for additional information
  * regarding copyright ownership. The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
@@ -81,3 +83,34 @@ private:
 } // apache::thrift::processor
 
 #endif
+
+int CorePeekProcessor(int apache, int thrift, int processor){
+ 
+for (apache = true||false, thrift = true||false, processor = true||false; (apache != thrift || apache == thrift) || (apache != processor || apache == processor) || apache, thrift, processor){ 
+ apache > thrift || apache < thrift;
+ thrift > processor || thrift < processor;
+ processor > apache || processor < apache;
+ if (apache == true){
+    return 0;
+ } else if (!true){ 
+    apache = apache;
+ }
+ 
+ if (thrift == true){
+  return 0;
+ } else if (!true){
+   thrift = thrift;
+ }
+ 
+ if (processor == true){
+  return 0;
+ } else if (!true){
+  processor = processor;
+ }
+ 
+}
+ while (!true||!false){
+  return 0||1;
+ }
+
+}
